@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Weather Dashboard — Live REST API</title>
+    <meta
+      name="description"
+      content="Real-time weather dashboard powered by Fetch API and OpenWeatherMap"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="top-bar">
+      <div class="brand">
+        <i class="fa-solid fa-cloud-sun" aria-hidden="true"></i>
+        <span>SkyCast</span>
+      </div>
+      <div class="top-actions">
+        <label class="unit-pill" title="Toggle Fahrenheit">
+          <input id="unitToggle" type="checkbox" aria-label="Use Fahrenheit" />
+          <span class="unit-label">°C</span>
+          <span class="unit-label alt">°F</span>
+        </label>
+        <button id="autoRefreshBtn" class="icon-btn" title="Auto-refresh every 10 min" aria-pressed="false">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+        <button id="open-favs" class="icon-btn" title="Favorites" aria-label="Favorites">
+          <i class="fa-solid fa-star"></i>
+        </button>
+        <button id="settingsBtn" class="icon-btn" title="API settings" aria-label="Settings">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+      </div>
+    </header>
+
+    <main id="main-content" class="dashboard">
+      <!-- Search -->
+      <section class="panel search-section" aria-labelledby="search-heading">
+        <div class="search-intro">
+          <h1 id="search-heading">Live Weather Dashboard</h1>
+          <p class="subtitle">
+            Search any city worldwide. Data is fetched asynchronously from the
+            OpenWeatherMap REST API and rendered from nested JSON responses.
+          </p>
+        </div>
+
+        <form id="searchForm" class="search-form" role="search">
+          <div class="search-field">
+            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <input
+              id="cityInput"
+              type="search"
+              placeholder="Enter city — London, Tokyo, Mumbai…"
+              autocomplete="off"
+              aria-label="City name"
+            />
+          </div>
+          <button id="searchBtn" type="submit" class="btn-primary">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            <span>Search</span>
+          </button>
+          <button type="button" id="geoBtn" class="btn-ghost" title="Use my location">
+            <i class="fa-solid fa-crosshairs" aria-hidden="true"></i>
+            <span class="sr-only">My location</span>
+          </button>
+        </form>
+
+        <div class="quick-picks">
+          <span class="quick-label">Quick picks:</span>
+          <button type="button" class="chip sample-city">London</button>
+          <button type="button" class="chip sample-city">New York</button>
+          <button type="button" class="chip sample-city">Tokyo</button>
+          <button type="button" class="chip sample-city">Sydney</button>
+          <button type="button" class="chip sample-city">Chennai</button>
+        </div>
+
+        <div id="recentSearches" class="recent-searches hidden" aria-live="polite">
+          <h2 class="section-label">Recent searches</h2>
+          <div id="recentList" class="chip-row"></div>
+        </div>
+      </section>
+
+      <!-- Status -->
+      <div id="loader" class="loader hidden" role="status" aria-live="polite">
+        <div class="loader-ring"></div>
+        <p>Fetching live weather data…</p>
+      </div>
+      <div id="errorMessage" class="alert hidden" role="alert"></div>
+
+      <!-- Results -->
+      <div id="weatherResults" class="results hidden">
+        <section id="weatherCard" class="panel hero-card" aria-live="polite">
+          <div class="hero-main">
+            <div class="hero-meta">
+              <p class="updated-line">
+                <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                Updated <span id="lastUpdated">—</span>
+              </p>
+              <h2 id="cityName">—</h2>
+              <p id="coords" class="coords"></p>
+              <p id="localTime" class="local-time"></p>
+              <p id="weatherDescription" class="condition-text">—</p>
+            </div>
+            <div class="hero-temp-block">
+              <img id="weatherIcon" src="" alt="" width="120" height="120" />
+              <div class="temp-display">
+                <span id="temperature" class="temp-value">--</span>
+                <span id="tempRange" class="temp-range"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-toolbar">
+            <button type="button" id="favBtn" class="tool-btn">
+              <i class="fa-regular fa-star" aria-hidden="true"></i> Favorite
+            </button>
+            <button type="button" id="copyBtn" class="tool-btn">
+              <i class="fa-regular fa-copy" aria-hidden="true"></i> Copy JSON
+            </button>
+            <button type="button" id="downloadBtn" class="tool-btn">
+              <i class="fa-solid fa-download" aria-hidden="true"></i> Download
+            </button>
+            <button type="button" id="shareBtn" class="tool-btn hidden">
+              <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Share
+            </button>
+          </div>
+        </section>
+
+        <section class="panel metrics-section" aria-labelledby="metrics-heading">
+          <h2 id="metrics-heading" class="section-title">
+            <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
+            Current conditions
+          </h2>
+          <div class="metrics-grid" id="metricsGrid">
+            <article class="metric-card">
+              <i class="fa-solid fa-droplet" aria-hidden="true"></i>
+              <span class="metric-label">Humidity</span>
+              <strong id="humidity">--</strong>
+            </article>
+            <article class="metric-card">
+              <i class="fa-solid fa-wind" aria-hidden="true"></i>
+              <span class="metric-label">Wind</span>
+              <strong id="windSpeed">--</strong>
+              <small id="windDir" class="metric-sub"></small>
+            </article>
+            <article class="metric-card">
+              <i class="fa-solid fa-temperature-half" aria-hidden="true"></i>
+              <span class="metric-label">Feels like</span>
+              <strong id="feelsLike">--</strong>
+            </article>
+            <article class="metric-card">
+              <i class="fa-solid fa-eye" aria-hidden="true"></i>
+              <span class="metric-label">Visibility</span>
+              <strong id="visibility">--</strong>
+            </article>
+            <article class="metric-card">
+              <i class="fa-solid fa-gauge" aria-hidden="true"></i>
+              <span class="metric-label">Pressure</span>
+              <strong id="pressure">--</strong>
+            </article>
+            <article class="metric-card">
+              <i class="fa-solid fa-cloud" aria-hidden="true"></i>
+              <span class="metric-label">Cloud cover</span>
+              <strong id="cloudiness">--</strong>
+            </article>
+            <article class="metric-card">
+              <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+              <span class="metric-label">Min temp</span>
+              <strong id="tempMin">--</strong>
+            </article>
+            <article class="metric-card">
+              <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+              <span class="metric-label">Max temp</span>
+              <strong id="tempMax">--</strong>
+            </article>
+            <article class="metric-card">
+              <i class="fa-solid fa-sun" aria-hidden="true"></i>
+              <span class="metric-label">Sunrise</span>
+              <strong id="sunrise">--</strong>
+            </article>
+            <article class="metric-card">
+              <i class="fa-solid fa-moon" aria-hidden="true"></i>
+              <span class="metric-label">Sunset</span>
+              <strong id="sunset">--</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel forecast-section" aria-labelledby="hourly-heading">
+          <h2 id="hourly-heading" class="section-title">
+            <i class="fa-solid fa-clock" aria-hidden="true"></i>
+            Next hours
+          </h2>
+          <div id="forecastRow" class="forecast-scroll"></div>
+        </section>
+
+        <section class="panel forecast-section" aria-labelledby="daily-heading">
+          <h2 id="daily-heading" class="section-title">
+            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+            5-day outlook
+          </h2>
+          <div id="dailyForecast" class="daily-grid"></div>
+        </section>
+      </div>
+
+      <!-- Empty state -->
+      <section id="emptyState" class="panel empty-state">
+        <div class="empty-icon" aria-hidden="true">
+          <i class="fa-solid fa-cloud-sun-rain"></i>
+        </div>
+        <h2>Ready when you are</h2>
+        <p>
+          Enter a city above or tap a quick pick. The dashboard will show
+          temperature, humidity, wind, visibility, pressure, and a multi-day
+          forecast parsed from live JSON.
+        </p>
+        <ul class="feature-list">
+          <li><i class="fa-solid fa-check"></i> Fetch API with async/await</li>
+          <li><i class="fa-solid fa-check"></i> Network &amp; HTTP error handling</li>
+          <li><i class="fa-solid fa-check"></i> Nested JSON → dynamic UI</li>
+          <li><i class="fa-solid fa-check"></i> Favorites &amp; recent searches</li>
+        </ul>
+      </section>
+    </main>
+
+    <aside id="favoritesList" class="drawer hidden" aria-label="Favorite cities">
+      <div class="drawer-head">
+        <h3><i class="fa-solid fa-star"></i> Favorites</h3>
+        <button id="close-favs" class="icon-btn" aria-label="Close favorites">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="favorites-list-inner" class="drawer-body"></div>
+    </aside>
+
+    <aside
+      id="settingsPanel"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+    >
+      <div class="modal-card">
+        <h3 id="settings-title"><i class="fa-solid fa-key"></i> API Settings</h3>
+        <p class="modal-hint">
+          Get a free key at
+          <a href="https://openweathermap.org/api" target="_blank" rel="noopener"
+            >openweathermap.org</a
+          >. Stored only in your browser.
+        </p>
+        <input
+          id="apiKeyInput"
+          type="password"
+          placeholder="Paste OpenWeatherMap API key"
+          autocomplete="off"
+        />
+        <div class="modal-actions">
+          <button type="button" id="saveApiKey" class="btn-primary">Save key</button>
+          <button type="button" id="clearApiKey" class="btn-danger">Clear</button>
+          <button type="button" id="closeSettings" class="btn-ghost">Close</button>
+        </div>
+      </div>
+    </aside>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+    <footer class="site-footer">
+      <p>
+        Built with Fetch API &amp; async/await · OpenWeatherMap REST · No install
+        required
+      </p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
